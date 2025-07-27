@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # Production service
+  app:
+    build:
+      context: .
+      target: production
+    # image: python-app:latest
+    container_name: python-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - app-network
+
+  # Test service
+  test:
+    build:
+      context: .
+      target: test
+    # image: python-app:test
+    container_name: python-app-test
+    volumes:
+      - ./src:/app/src:ro
+      - ./tests:/app/tests:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: uv run pytest tests/ -v
+    networks:
+      - app-network
+
+  # Development service for updating uv.lock
+  dev:
+    build:
+      context: .
+      target: dev
+    # image: python-app:dev
+    container_name: python-app-dev
+    volumes:
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./uv.lock:/app/uv.lock
+      - ./src:/app/src
+      - ./tests:/app/tests
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: /bin/bash
+    stdin_open: true
+    tty: true
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
